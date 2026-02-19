@@ -1,0 +1,210 @@
+/**
+ * Layout engine.
+ */
+
+/**
+ * Wraps text into lines based on max width.
+ * Respects explicit newlines in the input text.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {string} text
+ * @param {number} maxWidth
+ * @returns {string[][]} Array of lines, where each line is an array of words
+ */
+/**
+ * Parses text into lines.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {string} text
+ * @param {number} maxWidth
+ * @param {boolean} autoWrap If true, ignores newlines and wraps by width. If false, respects newlines.
+ * @returns {string[][]} Array of lines, where each line is an array of words
+ */
+const wrapText = (ctx, text, maxWidth, autoWrap) => {
+    if (!autoWrap) {
+        // Strict manual newlines
+        return text.split('\n').map(line => line.trim().split(/\s+/).filter(w => w.length > 0)).filter(line => line.length > 0);
+    }
+
+    // Greedy auto-wrap (matches browser behavior)
+    const words = text.replace(/\n/g, ' ').split(/\s+/).filter(w => w.length > 0);
+    if (words.length === 0) return [];
+    if (words.length === 1) return [words];
+
+    const lines = [];
+    let currentLine = [];
+
+    for (const word of words) {
+        const testLine = [...currentLine, word];
+        const testWidth = ctx.measureText(testLine.join(' ')).width;
+
+        if (currentLine.length > 0 && testWidth > maxWidth) {
+            lines.push(currentLine);
+            currentLine = [word];
+        } else {
+            currentLine.push(word);
+        }
+    }
+    if (currentLine.length > 0) {
+        lines.push(currentLine);
+    }
+    return lines;
+};
+
+/**
+ * Replicates bratgenerator.com's textFit algorithm exactly.
+ * All wrapping/sizing is done at the reference's 460x260px dimensions,
+ * then scaled up to the output canvas.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {string} text
+ * @param {Object} config { width, height, paddingRatio, lineHeight, fontBase, autoWrap }
+ * @returns {Object} { fontSize, lines, blockWidth, blockHeight, safeWidth, fontBase }
+ */
+const calculateLayout = (ctx, text, config) => {
+    const { width, height, lineHeight, autoWrap } = config;
+    const fontBase = config.fontBase || config.fontFamily || 'Arial';
+
+    // --- Reference container (bratgenerator.com white theme) ---
+    const REF_CONTAINER_W = 500;
+    const REF_PADDING = 20;
+    // Actual reference container: 500px with 20px padding on each side = 460px text area.
+    // The wrapText tolerance (1.005x) handles minor canvas-vs-browser metric differences.
+    const REF_TEXT_W = 460;
+    const REF_TEXT_H = 300 - REF_PADDING * 2;                // 260
+    const REF_MAX_FONT = 170;
+
+    // Scale factor: our canvas vs reference container
+    const scale = Math.min(width, height) / REF_CONTAINER_W;
+
+    // --- Binary search at REFERENCE dimensions ---
+    let minFs = 10;
+    let maxFs = REF_MAX_FONT;
+    let optimalFs = minFs;
+    let optimalLines = [];
+
+    while (minFs <= maxFs) {
+        const currentFs = Math.floor((minFs + maxFs) / 2);
+        // Measure at reference font size
+        ctx.font = `${config.fontWeight} ${currentFs}px "${fontBase}"`;
+
+        const lines = wrapText(ctx, text, REF_TEXT_W, autoWrap === undefined ? true : autoWrap);
+        const totalHeight = lines.length * (currentFs * lineHeight);
+
+        let fits = true;
+        if (totalHeight > REF_TEXT_H) {
+            fits = false;
+        } else {
+            for (const line of lines) {
+                if (ctx.measureText(line.join(' ')).width > REF_TEXT_W) {
+                    fits = false;
+                    break;
+                }
+            }
+        }
+
+        if (fits) {
+            optimalFs = currentFs;
+            optimalLines = lines;
+            minFs = currentFs + 1;
+        } else {
+            maxFs = currentFs - 1;
+        }
+    }
+
+    // --- Scale to output canvas ---
+    const scaledFs = Math.round(optimalFs * scale);
+
+    // Re-measure at scaled font for correct pixel positions on canvas
+    ctx.font = `${config.fontWeight} ${scaledFs}px "${fontBase}"`;
+    const finalLines = optimalLines;
+    const blockHeight = finalLines.length * (scaledFs * lineHeight);
+
+    let maxLineWidth = 0;
+    for (const line of finalLines) {
+        const w = ctx.measureText(line.join(' ')).width;
+        if (w > maxLineWidth) maxLineWidth = w;
+    }
+
+    // For justify: use fixed container width so text block never shrinks
+    // when lines reflow. This matches the reference site's fixed-width container.
+    const textAlign = config.textAlign || 'justify';
+    const scaledContainerW = Math.round(REF_TEXT_W * scale);
+    const effectiveBlockWidth = (textAlign === 'justify') ? scaledContainerW : maxLineWidth;
+
+    return {
+        fontSize: scaledFs,
+        lines: finalLines,
+        blockWidth: effectiveBlockWidth,
+        blockHeight: blockHeight,
+        safeWidth: width * (1 - (config.paddingRatio || 0.04) * 2),
+        fontBase: fontBase
+    };
+};
+
+/**
+ * Calculates exact (x,y) for every character in the layout, supporting alignment.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {string[][]} lines
+ * @param {number} originX
+ * @param {number} originY
+ * @param {number} fontSize
+ * @param {number} lineHeight
+ * @param {string} fontBase
+ * @param {number} fontWeight
+ * @param {number} blockWidth
+ * @param {string} textAlign 'left' | 'center' | 'justify'
+ * @returns {Array<{char: string, x: number, y: number, index: number}>}
+ */
+const getFlatCharacterPositions = (ctx, lines, originX, originY, fontSize, lineHeight, fontBase, fontWeight, blockWidth, textAlign) => {
+    ctx.font = `${fontWeight} ${fontSize}px "${fontBase}"`;
+    const flatChars = [];
+
+    lines.forEach((lineWords, lineIdx) => {
+        const lineY = originY + (lineIdx * fontSize * lineHeight);
+
+        let spaceWidth = ctx.measureText(' ').width;
+        let startX = originX;
+
+        // Justify: distribute extra space between words (only for multi-word lines)
+        if (textAlign === 'justify' && lineWords.length > 1) {
+            const totalWordWidth = lineWords.reduce((acc, word) => acc + ctx.measureText(word).width, 0);
+            const availableSpace = blockWidth - totalWordWidth;
+            spaceWidth = availableSpace / (lineWords.length - 1);
+        } else if (textAlign === 'center') {
+            const lineWidth = ctx.measureText(lineWords.join(' ')).width;
+            startX = originX + (blockWidth - lineWidth) / 2;
+        }
+
+        let currentX = startX;
+
+        lineWords.forEach((word, wordIdx) => {
+            for (let i = 0; i < word.length; i++) {
+                const char = word[i];
+                const charOffset = ctx.measureText(word.substring(0, i)).width;
+                flatChars.push({
+                    char,
+                    x: currentX + charOffset,
+                    y: lineY,
+                    index: flatChars.length
+                });
+            }
+
+            currentX += ctx.measureText(word).width;
+
+            if (wordIdx < lineWords.length - 1) {
+                flatChars.push({
+                    char: ' ',
+                    x: currentX,
+                    y: lineY,
+                    index: flatChars.length
+                });
+                currentX += spaceWidth;
+            }
+        });
+    });
+    return flatChars;
+};
+
+module.exports = {
+    calculateLayout,
+    getFlatCharacterPositions
+};

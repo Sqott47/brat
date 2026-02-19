@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brat Video Generator</title>
+    <!-- Use Inter font for a modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #09090b;
+            --bg-card: #18181b;
+            --bg-hover: #27272a;
+            --border: #3f3f46;
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --accent: #8ece00;
+            /* brat green */
+            --accent-hover: #a3e635;
+            --danger: #ef4444;
+            --radius: 12px;
+            --transition: 0.2s ease-in-out;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 380px;
+            background-color: var(--bg-card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 24px;
+            gap: 24px;
+        }
+
+        /* Custom Scrollbar */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background-color: var(--border);
+            border-radius: 10px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .header svg {
+            color: var(--accent);
+            width: 28px;
+            height: 28px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        /* --- Cards & Groups --- */
+        .card {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title svg {
+            width: 16px;
+            height: 16px;
+            opacity: 0.7;
+        }
+
+        /* --- Form Elements --- */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-row>.input-group {
+            flex: 1;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        textarea,
+        select,
+        input[type="number"] {
+            width: 100%;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color var(--transition);
+            outline: none;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            line-height: 1.4;
+        }
+
+        textarea:focus,
+        select:focus,
+        input[type="number"]:focus {
+            border-color: var(--accent);
+        }
+
+        /* Range Slider Styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            margin: 10px 0;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Toggle Switch Styling */
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .toggle-label span.desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 400;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 22px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider-round {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--bg-base);
+            border: 1px solid var(--border);
+            transition: .4s;
+            border-radius: 22px;
+        }
+
+        .slider-round:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: var(--text-muted);
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider-round {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        input:checked+.slider-round:before {
+            background-color: #000;
+            transform: translateX(18px);
+        }
+
+        /* --- Actions --- */
+        .actions-card {
+            background: rgba(142, 206, 0, 0.05);
+            border-color: rgba(142, 206, 0, 0.2);
+        }
+
+        button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all var(--transition);
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: #000;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-hover);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: var(--border);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-text {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: -8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .note {
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.4;
+            display: flex;
+            gap: 6px;
+            background: var(--bg-base);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .note svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            color: #fbbf24;
+        }
+
+        /* --- Main Preview Area --- */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-base);
+            position: relative;
+        }
+
+        .preview-area {
+            flex: 1;
+            margin: 24px;
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background-color: #1a1a1a;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s;
+        }
+
+        .preview-area.light-mode {
+            background-color: #e0e0e0;
+        }
+
+        .preview-loader {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            font-weight: 500;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 20;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .preview-loader.active {
+            opacity: 1;
+        }
+
+        .preview-loader svg {
+            width: 14px;
+            height: 14px;
+            animation: spin 1s linear infinite;
+        }
+
+        .preview-fab {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            width: auto;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 24px;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .preview-fab:hover {
+            transform: scale(1.05);
+            background: var(--accent-hover);
+        }
+
+        .preview-fab svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        #preview-img,
+        #preview-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: auto;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: opacity 0.4s ease;
+        }
+
+        #preview-img {
+            z-index: 2;
+            opacity: 1;
+        }
+
+        #preview-video {
+            z-index: 3;
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- SIDEBAR CONTROLS -->
+    <div class="sidebar">
+        <div class="header">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                <line x1="7" y1="2" x2="7" y2="22"></line>
+                <line x1="17" y1="2" x2="17" y2="22"></line>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <line x1="2" y1="7" x2="7" y2="7"></line>
+                <line x1="2" y1="17" x2="7" y2="17"></line>
+                <line x1="17" y1="17" x2="22" y2="17"></line>
+                <line x1="17" y1="7" x2="22" y2="7"></line>
+            </svg>
+            <h1>Brat Generator</h1>
+        </div>
+
+        <!-- 1. Content Card -->
+        <div class="card">
+            <div class="card-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 20h9"></path>
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+                Content
+            </div>
+
+            <div class="input-group">
+                <label>Text</label>
+                <textarea id="inputText">brat generator</textarea>
+            </div>
+
+            <div class="input-row">
+                <div class="input-group">
+                    <label>Color</label>
+                    <select id="textColor">
+                        <option value="#000000">Black</option>
+                        <option value="#ffffff" selected>White</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Alignment</label>
+                    <select id="textAlign">
+                        <option value="justify">Justify</option>
+                        <option value="left">Left</option>
+                        <option value="center">Center</option>
+                    </select>
+                </div>
+            </div>
+
+            <label class="toggle-label">
+                <div>
+                    Text Auto-Wrap
+                    <span class="desc">Automatically break long lines to fit</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="autoWrap" checked>
+                    <span class="slider-round"></span>
+                </label>
+            </label>
+        </div>
+
+        <!-- 2. Motion & Optics Card -->
+        <div class="card">
+            <div class="card-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                Motion & Optics
+            </div>
+
+            <div class="input-group">
+                <label>Typing Speed <span id="speedValSpan" style="color:var(--text-main);">10 ch/s</span></label>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <input type="range" id="speedRange" min="1" max="60" value="10">
+                    <input type="number" id="speedInput" value="10"
+                        style="width: 60px; padding: 4px; text-align: center; display:none;">
+                </div>
+            </div>
+
+            <label class="toggle-label">
+                <div>
+                    Focus Pull
+                    <span class="desc">Cinematic blur on character entry</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="focusPull">
+                    <span class="slider-round"></span>
+                </label>
+            </label>
+
+            <div class="input-group">
+                <label>Motion Blur Trails <span id="motionBlurVal" style="color:var(--text-main);">0</span></label>
+                <input type="range" id="motionBlur" min="0" max="0.9" step="0.05" value="0">
+            </div>
+
+            <div class="input-group">
+                <label>Static Blur <span id="blurVal" style="color:var(--text-main);">2 px</span></label>
+                <input type="range" id="blurRange" min="0" max="10" step="0.5" value="2">
+            </div>
+        </div>
+
+        <!-- 3. Distortion Effects Card -->
+        <div class="card">
+            <div class="card-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                </svg>
+                Distortion
+            </div>
+
+            <div class="input-group">
+                <label>Impact Jitter <span id="jitterVal" style="color:var(--text-main);">0</span></label>
+                <input type="range" id="jitter" min="0" max="20" step="1" value="0">
+            </div>
+
+            <div class="input-group">
+                <label>Chromatic Split <span id="chromaVal" style="color:var(--text-main);">0</span></label>
+                <input type="range" id="chroma" min="0" max="20" step="1" value="0">
+            </div>
+
+            <div class="input-group">
+                <label>Drop Shadow <span id="dropShadowVal" style="color:var(--text-main);">0</span></label>
+                <input type="range" id="dropShadow" min="0" max="50" step="1" value="0">
+            </div>
+        </div>
+
+        <!-- 4. Export & Output Card -->
+        <div class="card actions-card">
+            <div class="card-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Output Settings
+            </div>
+
+            <div class="input-row">
+                <div class="input-group">
+                    <label>Resolution</label>
+                    <select id="resolution">
+                        <option value="900" selected>900x900</option>
+                        <option value="720">720x720</option>
+                        <option value="1080">1080x1080</option>
+                    </select>
+                </div>
+                <div class="input-group" style="flex: 0.5;">
+                    <label>FPS</label>
+                    <input type="number" id="fps" value="30">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Video Format</label>
+                <select id="exportFormat">
+                    <option value="mov_prores" selected>MOV (Transparent ProRes)</option>
+                    <option value="mp4_green">MP4 (Green Screen)</option>
+                    <option value="mp4_black">MP4 (Black Background)</option>
+                    <option value="mp4_white">MP4 (White Background)</option>
+                </select>
+            </div>
+
+            <div class="note">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span>ProRes MOV provides true transparency for video editors (CapCut/Premiere) but uses more disk
+                    space.</span>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:8px;">
+                <button id="saveScreenshot" class="btn-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    Save Image
+                </button>
+                <button id="renderBtn" class="btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Render Video
+                </button>
+            </div>
+            <div class="status-text" id="status">Ready state</div>
+        </div>
+    </div>
+
+    <!-- MAIN VIZ -->
+    <div class="main-content">
+        <div class="preview-area">
+            <div id="preview-loader" class="preview-loader">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+                <span>Rendering Motion...</span>
+            </div>
+            <button id="previewFab" class="preview-fab">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                </svg>
+                Play Preview
+            </button>
+            <img id="preview-img" src="" alt="Static Outline Preview">
+            <video id="preview-video" muted playsinline></video>
+        </div>
+    </div>
+
+    <script>
+        // Sync sliders & Labels
+        const syncSliderLabel = (sliderId, labelId, suffix = '') => {
+            const slider = document.getElementById(sliderId);
+            const label = document.getElementById(labelId);
+            if (slider && label) {
+                slider.addEventListener('input', () => {
+                    label.innerText = slider.value + suffix;
+                });
+            }
+        };
+
+        syncSliderLabel('motionBlur', 'motionBlurVal');
+        syncSliderLabel('jitter', 'jitterVal');
+        syncSliderLabel('chroma', 'chromaVal');
+        syncSliderLabel('dropShadow', 'dropShadowVal');
+        syncSliderLabel('blurRange', 'blurVal', ' px');
+
+        const speedRange = document.getElementById('speedRange');
+        const speedInput = document.getElementById('speedInput'); // hidden, used by main logic
+        const speedValSpan = document.getElementById('speedValSpan');
+        speedRange.addEventListener('input', () => {
+            speedInput.value = speedRange.value;
+            speedValSpan.innerText = speedRange.value + ' ch/s';
+        });
+
+        const statusParams = document.getElementById('status');
+
+        // Debounce function
+        const debounce = (func, wait) => {
+            let timeout;
+            return (...args) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        };
+
+        let allPresets = {};
+
+        const getConfig = () => {
+            const res = document.getElementById('resolution').value;
+            const size = parseInt(res) || 900;
+            let width = size, height = size;
+
+            const exportFormat = document.getElementById('exportFormat').value;
+            let backgroundColor = 'rgb(0,255,0)';
+            if (exportFormat === 'mp4_black') backgroundColor = '#000000';
+            if (exportFormat === 'mp4_white') backgroundColor = '#ffffff';
+            if (exportFormat === 'mov_prores') backgroundColor = 'transparent';
+
+            return {
+                width, height,
+                fps: document.getElementById('fps').value || '30',
+                charsPerSecond: speedInput.value,
+                textAlign: document.getElementById('textAlign').value,
+                exportFormat: exportFormat,
+                backgroundColor: backgroundColor,
+                textColor: document.getElementById('textColor').value,
+                fontFamily: 'Arial Narrow',
+                fontWeight: 500,
+                lineHeight: 1,
+                paddingRatio: 0.04,
+                revealFrames: 3,
+                revealOffsetPx: 18,
+                endHold: 2,
+                blur: parseFloat(document.getElementById('blurRange').value),
+                focusPull: document.getElementById('focusPull').checked,
+                autoWrap: document.getElementById('autoWrap').checked,
+                motionBlur: parseFloat(document.getElementById('motionBlur').value),
+                jitter: parseInt(document.getElementById('jitter').value),
+                chroma: parseInt(document.getElementById('chroma').value),
+                dropShadow: parseInt(document.getElementById('dropShadow').value)
+            };
+        };
+
+        let isBuildingVideo = false;
+        let pendingVideoConfig = null;
+
+        const requestLiveVideo = async (text, config) => {
+            if (isBuildingVideo) {
+                pendingVideoConfig = { text, config };
+                return;
+            }
+
+            isBuildingVideo = true;
+            document.getElementById('preview-loader').classList.add('active');
+
+            try {
+                const result = await window.electronAPI.buildLivePreview({ text, config });
+                if (result.success) {
+                    const vid = document.getElementById('preview-video');
+                    vid.src = `file://${result.outputPath}?t=${Date.now()}`;
+
+                    // Wait for it to actually start playing before crossing fading
+                    vid.onplaying = () => {
+                        document.getElementById('preview-img').style.opacity = '0';
+                        vid.style.opacity = '1';
+                        vid.onplaying = null;
+
+                        // Stop looping, return to static image
+                        vid.onended = () => {
+                            document.getElementById('preview-img').style.opacity = '1';
+                            vid.style.opacity = '0';
+                        };
+                    };
+                    vid.play().catch(e => console.error("Autoplay failed", e));
+                }
+            } catch (e) {
+                console.error("Video Build Failed:", e);
+            }
+
+            isBuildingVideo = false;
+
+            if (pendingVideoConfig) {
+                const next = pendingVideoConfig;
+                pendingVideoConfig = null;
+                requestLiveVideo(next.text, next.config);
+            } else {
+                document.getElementById('preview-loader').classList.remove('active');
+            }
+        };
+
+        const updateStaticPreview = async () => {
+            const text = document.getElementById('inputText').value;
+            const config = getConfig();
+
+            // Setup styling for wrapper depending on transparent vs solid color mode
+            const previewArea = document.querySelector('.preview-area');
+            const isDarkText = config.textColor === '#000000';
+            if (isDarkText && (config.exportFormat === 'mov_prores' || config.exportFormat === 'webm_preview')) {
+                previewArea.classList.add('light-mode');
+            } else {
+                previewArea.classList.remove('light-mode');
+            }
+
+            const dataUrl = await window.electronAPI.generatePreview({ text, config });
+            if (dataUrl) {
+                const img = document.getElementById('preview-img');
+                const vid = document.getElementById('preview-video');
+
+                img.src = dataUrl;
+
+                // Immediately switch to static preview so user sees instant layout feedback
+                vid.style.opacity = '0';
+                img.style.opacity = '1';
+
+                statusParams.innerText = "Layout Updated";
+            }
+        };
+
+        const debouncedStatic = debounce(updateStaticPreview, 50);
+
+        const handleControlChange = () => {
+            debouncedStatic();
+        };
+
+        // Event listener for manual animated preview
+        document.getElementById('previewFab').addEventListener('click', () => {
+            requestLiveVideo(document.getElementById('inputText').value, getConfig());
+        });
+
+        // Bind Real-time updates
+        document.getElementById('inputText').addEventListener('input', handleControlChange);
+
+        ['resolution', 'fps', 'textAlign', 'speedRange', 'exportFormat', 'blurRange', 'motionBlur', 'jitter', 'chroma', 'dropShadow'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', handleControlChange);
+        });
+
+        ['textAlign', 'autoWrap', 'textColor', 'focusPull', 'exportFormat'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', handleControlChange);
+        });
+
+        // Specific toggle for export formats adjusting defaults
+        document.getElementById('exportFormat').addEventListener('change', () => {
+            const format = document.getElementById('exportFormat').value;
+            if (format === 'mp4_black') {
+                document.getElementById('textColor').value = '#ffffff';
+            } else if (format === 'mp4_white') {
+                document.getElementById('textColor').value = '#000000';
+            }
+            handleControlChange();
+        });
+
+        document.getElementById('saveScreenshot').addEventListener('click', async () => {
+            const text = document.getElementById('inputText').value;
+            const config = getConfig();
+            statusParams.innerText = "Saving screenshot...";
+            const result = await window.electronAPI.saveScreenshot({ text, config });
+            if (result.success) {
+                statusParams.innerText = `Screenshot saved!`;
+            } else {
+                statusParams.innerHTML = `<span style="color:var(--danger)">Error: ${result.error}</span>`;
+            }
+        });
+
+        document.getElementById('renderBtn').addEventListener('click', async () => {
+            const text = document.getElementById('inputText').value;
+            const config = getConfig();
+
+            statusParams.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="spin" style="stroke:var(--accent)"><circle cx="12" cy="12" r="10"></circle></svg> Rendering Video...`;
+            document.getElementById('renderBtn').disabled = true;
+
+            const result = await window.electronAPI.renderVideo({ text, config });
+
+            document.getElementById('renderBtn').disabled = false;
+            if (result.success) {
+                statusParams.innerText = `✅ Render Complete`;
+            } else {
+                statusParams.innerHTML = `<span style="color:var(--danger)">Error: ${result.error || result.reason}</span>`;
+            }
+        });
+
+        // Initial load
+        window.electronAPI.getPreset().then(presets => {
+            if (presets) {
+                allPresets = presets;
+                const defaultPreset = presets.green_chroma;
+                if (defaultPreset) {
+                    speedRange.value = defaultPreset.charsPerSecond || 10;
+                    speedInput.value = defaultPreset.charsPerSecond || 10;
+                    speedValSpan.innerText = (defaultPreset.charsPerSecond || 10) + ' ch/s';
+                }
+            }
+            handleControlChange();
+        });
+    </script>
+</body>
+
+</html>

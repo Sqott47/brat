@@ -1,0 +1,23 @@
+{
+    "width": 720,
+    "height": 720,
+    "fps": 30,
+    "preset": "green_chroma",
+    "segments": [
+        {
+            "text": "brat generator",
+            "wordsPerSecond": 8,
+            "endHold": 1.0
+        },
+        {
+            "text": "batch mode test",
+            "wordsPerSecond": 10,
+            "endHold": 2.0
+        },
+        {
+            "text": "pure green energy",
+            "backgroundColor": "rgb(0,255,0)",
+            "textColor": "#FFFFFF"
+        }
+    ]
+}
