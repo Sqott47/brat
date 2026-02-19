@@ -32,8 +32,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "sqott47",
-        "repo": "YOUR_REPO_NAME_HERE"
+        "owner": "Sqott47",
+        "repo": "brat"
       }
     ],
     "directories": {
