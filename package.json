@@ -1,6 +1,6 @@
 {
   "name": "brat-video-gen",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Brat style text animation video generator",
   "main": "src/gui/main.js",
   "scripts": {
@@ -59,12 +59,12 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": null
+      "icon": "assets/icon.png"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": false,
+      "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Brat Video Generator"
