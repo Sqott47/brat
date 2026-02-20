@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, screen, desktopCapturer } = require('electron');
 const path = require('path');
 const fs = require('fs-extra');
 const { autoUpdater } = require('electron-updater');
@@ -101,29 +101,97 @@ ipcMain.handle('get-preset', () => presets);
 // Get app version
 ipcMain.handle('get-version', () => app.getVersion());
 
+// Pick color from screen (native eyedropper for outside app window)
+ipcMain.handle('pick-screen-color', async () => {
+    try {
+        const point = screen.getCursorScreenPoint();
+        const display = screen.getDisplayNearestPoint(point);
+
+        // Capture the entire display
+        const sources = await desktopCapturer.getSources({
+            types: ['screen'],
+            thumbnailSize: { width: display.size.width, height: display.size.height }
+        });
+
+        // Find the source matching our display
+        const source = sources.find(s => s.display_id === String(display.id)) || sources[0];
+        if (!source) return null;
+
+        const thumbnail = source.thumbnail;
+        // Get the pixel at cursor position (relative to display bounds)
+        const x = point.x - display.bounds.x;
+        const y = point.y - display.bounds.y;
+        const bitmap = thumbnail.toBitmap();
+        const width = thumbnail.getSize().width;
+
+        // BGRA format, 4 bytes per pixel
+        const offset = (y * width + x) * 4;
+        const b = bitmap[offset];
+        const g = bitmap[offset + 1];
+        const r = bitmap[offset + 2];
+
+        const hex = '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+        return hex;
+    } catch (e) {
+        console.error('pick-screen-color error:', e);
+        return null;
+    }
+});
+
+// Get system fonts
+ipcMain.handle('get-system-fonts', () => {
+    try {
+        const { GlobalFonts } = require('@napi-rs/canvas');
+        const { loadFonts } = require('../renderer');
+        loadFonts(path.join(__dirname, '../../assets/fonts/Inter-Medium.ttf'));
+        const families = GlobalFonts.families.map(f => f.family).sort();
+        return families;
+    } catch (e) {
+        console.error('Failed to get system fonts:', e);
+        return ['Arial Narrow', 'Arial', 'Inter', 'Times New Roman', 'Comic Sans MS'];
+    }
+});
+
 // Render Video
 ipcMain.handle('render-video', async (event, { text, config, outputPath }) => {
     try {
         console.log('Rendering with config:', config);
+        let textsToRender = Array.isArray(text) ? text : [text];
+        let isBatch = false;
+        if (config.batchMode && textsToRender.length >= 1) {
+            isBatch = true;
+        }
+
         if (!outputPath) {
-            // Use first word of text as default filename
-            const firstWord = (text || '').trim().split(/\s+/)[0] || 'brat_video';
-            const safeName = firstWord.replace(/[^a-zA-Zа-яА-ЯёЁ0-9_-]/g, '_');
+            if (isBatch) {
+                const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+                    buttonLabel: 'Выбрать папку',
+                    title: `Куда сохранить ${textsToRender.length} видео?`,
+                    properties: ['openDirectory']
+                });
+                if (!filePaths || filePaths.length === 0) return { success: false, reason: 'cancelled' };
+                outputPath = filePaths[0];
+            } else {
+                // Use first word of text as default filename
+                const baseText = Array.isArray(text) ? textsToRender[0] : text;
+                const firstWord = (baseText || '').trim().split(/\s+/)[0] || 'brat_video';
+                const safeName = firstWord.replace(/[^a-zA-Zа-яА-ЯёЁ0-9_-]/g, '_');
 
-            let dfExt = 'mp4';
-            let dfName = 'MP4 Video';
-            if (config.exportFormat === 'mov_prores') {
-                dfExt = 'mov';
-                dfName = 'MOV Video (ProRes with Alpha)';
+                let dfExt = 'mp4';
+                let dfName = 'MP4 Video';
+                if (config.exportFormat === 'mov_prores') {
+                    dfExt = 'mov';
+                    dfName = 'MOV Video (ProRes with Alpha)';
+                }
+                const { filePath } = await dialog.showSaveDialog(mainWindow, {
+                    buttonLabel: 'Save Video',
+                    defaultPath: `${safeName}.${dfExt}`,
+                    filters: [{ name: dfName, extensions: [dfExt] }]
+                });
+
+                if (!filePath) return { success: false, reason: 'cancelled' };
+                outputPath = filePath;
             }
-            const { filePath } = await dialog.showSaveDialog(mainWindow, {
-                buttonLabel: 'Save Video',
-                defaultPath: `${safeName}.${dfExt}`,
-                filters: [{ name: dfName, extensions: [dfExt] }]
-            });
-
-            if (!filePath) return { success: false, reason: 'cancelled' };
-            outputPath = filePath;
         }
 
         config.width = parseInt(config.width);
@@ -135,7 +203,19 @@ ipcMain.handle('render-video', async (event, { text, config, outputPath }) => {
         const { loadFonts } = require('../renderer');
         loadFonts(path.join(__dirname, '../../assets/fonts/Inter-Medium.ttf'));
 
-        await renderVideo(text, config, outputPath);
+        for (let i = 0; i < textsToRender.length; i++) {
+            const lineText = textsToRender[i];
+            let finalPath = outputPath;
+
+            if (isBatch) {
+                let dfExt = config.exportFormat === 'mov_prores' ? 'mov' : 'mp4';
+                const safeName = lineText.split(/\s+/)[0].replace(/[^a-zA-Zа-яА-ЯёЁ0-9_-]/g, '_') || `video_${i + 1}`;
+                finalPath = path.join(outputPath, `${safeName}_${i + 1}.${dfExt}`);
+                console.log(`Rendering batch video ${i + 1}/${textsToRender.length}: ${finalPath}`);
+            }
+
+            await renderVideo(lineText, config, finalPath);
+        }
 
         mainWindow.focus();
         return { success: true, outputPath };

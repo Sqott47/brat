@@ -369,6 +369,59 @@
             background-color: #e0e0e0;
         }
 
+        /* Batch preview grid */
+        #batch-preview-grid {
+            display: none;
+            width: 100%;
+            height: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            gap: 8px;
+        }
+
+        #batch-preview-grid.active {
+            display: grid;
+        }
+
+        /* 1 item = 1 col, 2 = 2 col, 3+ = 2 col multi-row */
+        #batch-preview-grid.cols-1 {
+            grid-template-columns: 1fr;
+        }
+
+        #batch-preview-grid.cols-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .batch-thumb {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #111;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .batch-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .batch-thumb .thumb-label {
+            position: absolute;
+            top: 6px;
+            left: 8px;
+            background: rgba(0, 0, 0, 0.65);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            pointer-events: none;
+        }
+
         .preview-loader {
             position: absolute;
             top: 16px;
@@ -498,17 +551,29 @@
                 Содержимое
             </div>
 
-            <div class="input-group">
-                <label>Текст</label>
-                <textarea id="inputText">brat generator</textarea>
+            <div id="text-input-container">
+                <div class="input-group">
+                    <label>Текст</label>
+                    <textarea id="inputText">brat generator</textarea>
+                </div>
+            </div>
+
+            <div id="batch-input-container"
+                style="display: none; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+                <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px; font-weight: 500;">ПАКЕТНЫЕ
+                    ВИДЕО</div>
+                <div id="batchList">
+                    <!-- Dynamic inputs go here -->
+                </div>
+                <button id="addBatchBtn" class="btn-secondary"
+                    style="margin-top: 12px; padding: 8px; font-size: 13px;">+ Добавить видео</button>
             </div>
 
             <div class="input-row">
                 <div class="input-group">
-                    <label>Цвет</label>
-                    <select id="textColor">
-                        <option value="#000000">Черный</option>
-                        <option value="#ffffff" selected>Белый</option>
+                    <label>Шрифт</label>
+                    <select id="fontFamily">
+                        <option value="Arial Narrow" selected>Arial Narrow</option>
                     </select>
                 </div>
                 <div class="input-group">
@@ -521,6 +586,32 @@
                 </div>
             </div>
 
+            <div class="input-group">
+                <label>Цвет текста</label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="color" id="textColorPicker" value="#ffffff"
+                        style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;">
+                    <div id="colorSwatch"
+                        style="width: 38px; height: 38px; min-width: 38px; border-radius: 6px; background: #ffffff; border: 1px solid var(--border-color); cursor: pointer; transition: background 0.15s ease;"
+                        title="Выбрать цвет"></div>
+                    <input type="text" id="textColor" value="#ffffff" maxlength="7"
+                        style="flex: 1; text-transform: uppercase; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; letter-spacing: 1px; padding: 8px 12px; background: var(--bg-main); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 6px; outline: none; transition: border-color 0.2s ease;">
+                    <button id="eyedropperBtn" type="button"
+                        title="🎯 Пипетка — берёт цвет из любого места экрана (даже вне приложения)"
+                        style="width: 38px; height: 38px; min-width: 38px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s ease, color 0.2s ease; color: var(--text-muted);"
+                        onmouseover="this.style.color='var(--accent)'"
+                        onmouseout="this.style.color='var(--text-muted)'"> <svg xmlns="http://www.w3.org/2000/svg"
+                            width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m2 22 1-1h3l9-9" />
+                            <path d="M3 21v-3l9-9" />
+                            <path
+                                d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3L15 6" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
             <label class="toggle-label">
                 <div>
                     Автоперенос текста
@@ -528,6 +619,17 @@
                 </div>
                 <label class="toggle-switch">
                     <input type="checkbox" id="autoWrap" checked>
+                    <span class="slider-round"></span>
+                </label>
+            </label>
+
+            <label class="toggle-label">
+                <div>
+                    Пакетный рендер
+                    <span class="desc">Создать отдельное видео для каждой строчки текста</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="batchMode">
                     <span class="slider-round"></span>
                 </label>
             </label>
@@ -682,6 +784,7 @@
             </button>
             <img id="preview-img" src="" alt="Static Outline Preview">
             <video id="preview-video" muted playsinline></video>
+            <div id="batch-preview-grid"></div>
         </div>
     </div>
 
@@ -689,6 +792,49 @@
         // Init App Version
         window.electronAPI.getVersion().then(v => {
             document.getElementById('app-version').innerText = `v${v}`;
+        });
+
+        // Init System Fonts
+        window.electronAPI.getSystemFonts().then(fonts => {
+            const select = document.getElementById('fontFamily');
+            select.innerHTML = ''; // Clear placeholder
+
+            // Prioritize common fonts at the top
+            const priority = ['Arial Narrow', 'Arial', 'Inter', 'Times New Roman', 'Comic Sans MS', 'Verdana', 'Georgia', 'Trebuchet MS'];
+            const prioritySet = new Set(priority);
+
+            // Add priority fonts first (only if they exist in system)
+            priority.forEach(name => {
+                if (fonts.includes(name)) {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    if (name === 'Arial Narrow') opt.selected = true;
+                    select.appendChild(opt);
+                }
+            });
+
+            // Separator
+            if (select.options.length > 0) {
+                const sep = document.createElement('option');
+                sep.disabled = true;
+                sep.textContent = '── Все шрифты ──';
+                select.appendChild(sep);
+            }
+
+            // Add all remaining system fonts
+            fonts.forEach(name => {
+                if (!prioritySet.has(name)) {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    select.appendChild(opt);
+                }
+            });
+
+            console.log(`Loaded ${fonts.length} system fonts.`);
+        }).catch(err => {
+            console.error('Failed to load system fonts:', err);
         });
 
         // Sync sliders & Labels
@@ -748,7 +894,7 @@
                 exportFormat: exportFormat,
                 backgroundColor: backgroundColor,
                 textColor: document.getElementById('textColor').value,
-                fontFamily: 'Arial Narrow',
+                fontFamily: document.getElementById('fontFamily').value,
                 fontWeight: 500,
                 lineHeight: 1,
                 paddingRatio: 0.04,
@@ -757,6 +903,7 @@
                 endHold: 2,
                 blur: parseFloat(document.getElementById('blurRange').value),
                 autoWrap: document.getElementById('autoWrap').checked,
+                batchMode: document.getElementById('batchMode').checked,
                 motionBlur: parseFloat(document.getElementById('motionBlur').value),
                 jitter: parseInt(document.getElementById('jitter').value),
                 chroma: parseInt(document.getElementById('chroma').value),
@@ -811,9 +958,20 @@
             }
         };
 
+        const getTextForPreview = () => {
+            if (document.getElementById('batchMode').checked) {
+                const inputs = document.querySelectorAll('.batch-inputText');
+                return inputs.length > 0 ? inputs[0].value : "";
+            }
+            return document.getElementById('inputText').value;
+        };
+
         const updateStaticPreview = async () => {
-            const text = document.getElementById('inputText').value;
             const config = getConfig();
+            const isBatch = document.getElementById('batchMode').checked;
+            const batchGrid = document.getElementById('batch-preview-grid');
+            const singleImg = document.getElementById('preview-img');
+            const vid = document.getElementById('preview-video');
 
             // Setup styling for wrapper depending on transparent vs solid color mode
             const previewArea = document.querySelector('.preview-area');
@@ -824,18 +982,97 @@
                 previewArea.classList.remove('light-mode');
             }
 
-            const dataUrl = await window.electronAPI.generatePreview({ text, config });
-            if (dataUrl) {
-                const img = document.getElementById('preview-img');
-                const vid = document.getElementById('preview-video');
+            if (isBatch) {
+                // Batch mode: render grid of previews
+                const inputs = document.querySelectorAll('.batch-inputText');
+                const MAX_PREVIEWS = 6;
+                const count = Math.min(inputs.length, MAX_PREVIEWS);
 
-                img.src = dataUrl;
+                singleImg.style.display = 'none';
+                vid.style.display = 'none';
+                batchGrid.classList.add('active');
 
-                // Immediately switch to static preview so user sees instant layout feedback
-                vid.style.opacity = '0';
-                img.style.opacity = '1';
+                // Set grid columns
+                batchGrid.className = 'active';
+                batchGrid.id = 'batch-preview-grid';
+                if (count === 1) batchGrid.classList.add('cols-1');
+                else batchGrid.classList.add('cols-2');
 
-                statusParams.innerText = "Макет обновлен";
+                // Ensure correct number of thumb slots exist (reuse existing)
+                const existingThumbs = batchGrid.querySelectorAll('.batch-thumb[data-idx]');
+                const existingCount = existingThumbs.length;
+
+                // Remove excess thumbs
+                if (existingCount > count) {
+                    for (let i = existingCount - 1; i >= count; i--) {
+                        existingThumbs[i].remove();
+                    }
+                }
+
+                // Remove the "+N more" placeholder if it exists
+                const morePlaceholder = batchGrid.querySelector('.batch-more');
+                if (morePlaceholder) morePlaceholder.remove();
+
+                // Add missing thumbs or update existing ones
+                for (let i = 0; i < count; i++) {
+                    const text = inputs[i].value || '';
+                    let thumb = batchGrid.querySelector(`.batch-thumb[data-idx="${i}"]`);
+                    let img;
+
+                    if (!thumb) {
+                        // Create new thumb
+                        thumb = document.createElement('div');
+                        thumb.className = 'batch-thumb';
+                        thumb.dataset.idx = i;
+
+                        const label = document.createElement('div');
+                        label.className = 'thumb-label';
+                        label.textContent = `Видео ${i + 1}`;
+                        thumb.appendChild(label);
+
+                        img = document.createElement('img');
+                        img.alt = `Preview ${i + 1}`;
+                        thumb.appendChild(img);
+
+                        batchGrid.appendChild(thumb);
+                    } else {
+                        img = thumb.querySelector('img');
+                    }
+
+                    // Generate preview async (image stays visible while loading)
+                    window.electronAPI.generatePreview({ text, config }).then(dataUrl => {
+                        if (dataUrl) img.src = dataUrl;
+                    });
+                }
+
+                if (inputs.length > MAX_PREVIEWS) {
+                    const more = document.createElement('div');
+                    more.className = 'batch-thumb batch-more';
+                    more.style.alignItems = 'center';
+                    more.style.justifyContent = 'center';
+                    more.style.color = 'var(--text-muted)';
+                    more.style.fontSize = '14px';
+                    more.style.fontWeight = '500';
+                    more.textContent = `+${inputs.length - MAX_PREVIEWS} ещё`;
+                    batchGrid.appendChild(more);
+                }
+
+                statusParams.innerText = `Макет: ${inputs.length} видео`;
+            } else {
+                // Single mode
+                batchGrid.classList.remove('active');
+                batchGrid.innerHTML = '';
+                singleImg.style.display = '';
+                vid.style.display = '';
+
+                const text = document.getElementById('inputText').value;
+                const dataUrl = await window.electronAPI.generatePreview({ text, config });
+                if (dataUrl) {
+                    singleImg.src = dataUrl;
+                    vid.style.opacity = '0';
+                    singleImg.style.opacity = '1';
+                    statusParams.innerText = "Макет обновлен";
+                }
             }
         };
 
@@ -847,29 +1084,152 @@
 
         // Event listener for manual animated preview
         document.getElementById('previewFab').addEventListener('click', () => {
-            requestLiveVideo(document.getElementById('inputText').value, getConfig());
+            requestLiveVideo(getTextForPreview(), getConfig());
         });
 
         // Bind Real-time updates
         document.getElementById('inputText').addEventListener('input', handleControlChange);
 
-        ['resolution', 'fps', 'textAlign', 'speedRange', 'exportFormat', 'blurRange', 'motionBlur', 'jitter', 'chroma', 'dropShadow'].forEach(id => {
+        // Batch Mode UI Logic
+        const addBatchVideo = (defaultText = "") => {
+            const list = document.getElementById('batchList');
+            const count = list.children.length + 1;
+            const div = document.createElement('div');
+            div.className = 'input-group';
+            div.style.position = 'relative';
+            div.style.marginTop = count === 1 ? '0' : '12px';
+            div.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <label style="margin: 0;">Видео ${count}</label>
+                    <span class="remove-btn" style="color: #ff4444; font-size: 12px; cursor: pointer; display: ${count === 1 ? 'none' : 'block'};">Удалить</span>
+                </div>
+                <textarea class="batch-inputText" style="height: 60px;">${defaultText}</textarea>
+            `;
+
+            div.querySelector('.remove-btn').addEventListener('click', () => {
+                div.remove();
+                // Rename sequence
+                Array.from(list.children).forEach((c, idx) => {
+                    c.querySelector('label').innerText = `Видео ${idx + 1}`;
+                });
+                handleControlChange();
+            });
+            div.querySelector('.batch-inputText').addEventListener('input', handleControlChange);
+            list.appendChild(div);
+            handleControlChange();
+        };
+
+        // Add first one by default
+        addBatchVideo("brat generator");
+
+        document.getElementById('addBatchBtn').addEventListener('click', () => {
+            addBatchVideo("");
+        });
+
+        document.getElementById('batchMode').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.getElementById('text-input-container').style.display = 'none';
+                document.getElementById('batch-input-container').style.display = 'block';
+                document.getElementById('previewFab').style.display = 'none';
+            } else {
+                document.getElementById('text-input-container').style.display = 'block';
+                document.getElementById('batch-input-container').style.display = 'none';
+                document.getElementById('previewFab').style.display = '';
+            }
+            handleControlChange();
+        });
+
+        // Update listeners
+        ['resolution', 'fps', 'speedRange', 'blurRange', 'motionBlur', 'jitter', 'chroma', 'dropShadow'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('input', handleControlChange);
         });
 
-        ['textAlign', 'autoWrap', 'textColor', 'exportFormat'].forEach(id => {
+        ['textAlign', 'autoWrap', 'fontFamily', 'exportFormat'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('change', handleControlChange);
+        });
+
+        // Sync color picker <-> hex text input (instant, no debounce)
+        const colorSwatch = document.getElementById('colorSwatch');
+        const colorPicker = document.getElementById('textColorPicker');
+        const colorText = document.getElementById('textColor');
+
+        // Click swatch -> open hidden native picker
+        colorSwatch.addEventListener('click', () => {
+            colorPicker.click();
+        });
+
+        // Native picker changes -> sync text + swatch
+        colorPicker.addEventListener('input', (e) => {
+            colorText.value = e.target.value;
+            colorSwatch.style.background = e.target.value;
+            updateStaticPreview();
+        });
+
+        // Text input changes -> sync picker + swatch
+        colorText.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+                colorPicker.value = val;
+                colorSwatch.style.background = val;
+                updateStaticPreview();
+            }
+        });
+
+        // Eyedropper (picks color from anywhere on screen via native Electron API)
+        const eyedropperBtn = document.getElementById('eyedropperBtn');
+        let isPickingColor = false;
+
+        eyedropperBtn.addEventListener('click', async () => {
+            if (isPickingColor) return;
+            isPickingColor = true;
+            eyedropperBtn.style.color = 'var(--accent)';
+            statusParams.innerText = "Кликните в любом месте экрана для выбора цвета...";
+
+            // Use the Web EyeDropper API first (works natively in Chromium)
+            if (window.EyeDropper) {
+                try {
+                    const dropper = new EyeDropper();
+                    const result = await dropper.open();
+                    const color = result.sRGBHex;
+                    colorText.value = color;
+                    colorPicker.value = color;
+                    colorSwatch.style.background = color;
+                    updateStaticPreview();
+                    statusParams.innerText = `Цвет выбран: ${color}`;
+                } catch (e) {
+                    statusParams.innerText = "Отменено";
+                }
+            } else {
+                // Fallback: native screen capture via IPC
+                const color = await window.electronAPI.pickScreenColor();
+                if (color) {
+                    colorText.value = color;
+                    colorPicker.value = color;
+                    colorSwatch.style.background = color;
+                    updateStaticPreview();
+                    statusParams.innerText = `Цвет выбран: ${color}`;
+                } else {
+                    statusParams.innerText = "Ошибка выбора цвета";
+                }
+            }
+
+            isPickingColor = false;
+            eyedropperBtn.style.color = 'var(--text-muted)';
         });
 
         // Specific toggle for export formats adjusting defaults
         document.getElementById('exportFormat').addEventListener('change', () => {
             const format = document.getElementById('exportFormat').value;
             if (format === 'mp4_black') {
-                document.getElementById('textColor').value = '#ffffff';
+                colorText.value = '#ffffff';
+                colorPicker.value = '#ffffff';
+                colorSwatch.style.background = '#ffffff';
             } else if (format === 'mp4_white') {
-                document.getElementById('textColor').value = '#000000';
+                colorText.value = '#000000';
+                colorPicker.value = '#000000';
+                colorSwatch.style.background = '#000000';
             }
             handleControlChange();
         });
@@ -886,9 +1246,26 @@
             }
         });
 
+        let isRendering = false; // Added for renderBtn handler
+
         document.getElementById('renderBtn').addEventListener('click', async () => {
-            const text = document.getElementById('inputText').value;
+            if (isRendering) return;
+
+            let text;
             const config = getConfig();
+            if (config.batchMode) {
+                text = Array.from(document.querySelectorAll('.batch-inputText'))
+                    .map(i => i.value)
+                    .filter(t => t.trim().length > 0);
+                if (text.length === 0) {
+                    statusParams.innerText = "Ошибка: Добавьте хотя бы одно видео с текстом.";
+                    return;
+                }
+            } else {
+                text = document.getElementById('inputText').value;
+            }
+
+            isRendering = true;
 
             statusParams.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="spin" style="stroke:var(--accent)"><circle cx="12" cy="12" r="10"></circle></svg> Рендеринг видео...`;
             document.getElementById('renderBtn').disabled = true;
@@ -896,6 +1273,7 @@
             const result = await window.electronAPI.renderVideo({ text, config });
 
             document.getElementById('renderBtn').disabled = false;
+            isRendering = false;
             if (result.success) {
                 statusParams.innerText = `✅ Рендер Завершен`;
             } else {

@@ -6,9 +6,26 @@ const { spawnFfmpeg } = require('./ffmpeg');
 const { easeOutCubic } = require('./utils');
 
 const loadFonts = (fontPath) => {
+    // Helper to safely load font from ASAR or disk using Buffer
+    const safeRegisterFont = (filePath, familyName) => {
+        try {
+            if (fs.existsSync(filePath)) {
+                // We read the file into a Node.js buffer first. 
+                // fs.readFileSync CAN read from inside .asar.
+                // The native @napi-rs C++ code cannot read .asar paths directly.
+                const fontBuffer = fs.readFileSync(filePath);
+                GlobalFonts.register(fontBuffer, familyName);
+                return true;
+            }
+        } catch (e) {
+            console.error(`Error loading font ${familyName} from ${filePath}`, e);
+        }
+        return false;
+    };
+
     // Register bundled Inter font (if it exists)
-    if (fontPath && fs.existsSync(fontPath)) {
-        GlobalFonts.registerFromPath(fontPath, 'Inter');
+    if (fontPath) {
+        safeRegisterFont(fontPath, 'Inter');
     }
 
     // Try to register Arial Narrow from multiple sources
@@ -17,32 +34,38 @@ const loadFonts = (fontPath) => {
         path.join(__dirname, '..', 'assets', 'fonts', 'ArialNarrow.ttf'),
         path.join(__dirname, '..', 'assets', 'fonts', 'arial-narrow.ttf'),
         path.join(__dirname, '..', 'assets', 'fonts', 'ARIALN.TTF'),
-        // Packaged app extraResources
+        // Packaged app extraResources (physically unpacked just in case)
         ...(process.resourcesPath ? [
             path.join(process.resourcesPath, 'fonts', 'ARIALN.TTF'),
             path.join(process.resourcesPath, 'fonts', 'ArialNarrow.ttf'),
+            path.join(process.resourcesPath, 'app.asar.unpacked', 'assets', 'fonts', 'ARIALN.TTF')
         ] : []),
         // Windows system fonts (fallback)
         'C:\\Windows\\Fonts\\ARIALN.TTF',
         'C:\\Windows\\Fonts\\arialn.ttf',
     ];
+
     let narrowRegistered = false;
     for (const anPath of arialNarrowPaths) {
-        if (fs.existsSync(anPath)) {
-            GlobalFonts.registerFromPath(anPath, 'Arial Narrow');
+        if (safeRegisterFont(anPath, 'Arial Narrow')) {
             console.log('Registered Arial Narrow from:', anPath);
             narrowRegistered = true;
             break;
         }
     }
+
     if (!narrowRegistered) {
         console.warn('WARNING: Arial Narrow font not found! Place ARIALN.TTF in assets/fonts/');
         console.warn('Falling back to Arial (will look wider than the reference)');
     }
 
-    // Log available font families for debugging
-    const families = GlobalFonts.families;
-    console.log('Available font families:', families.map(f => f.family).join(', '));
+    // Load standard system fonts so the user can use Arial, Times New Roman, Comic Sans etc.
+    try {
+        console.log('Loading system fonts...');
+        GlobalFonts.loadSystemFonts();
+    } catch (e) {
+        console.error('Failed to load system fonts:', e);
+    }
 
     return 'Inter';
 };
